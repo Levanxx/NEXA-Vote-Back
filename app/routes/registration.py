@@ -1,13 +1,18 @@
 from flask import Blueprint, request, jsonify
+
 from app.services.registration_service import (
     create_voter,
     get_voter,
-    update_voter
+    update_voter,
+    get_face,
+    get_webauthn,
+    get_status,
+    complete_registration_service
 )
+
 from app.utils.validators import validate_identity
 
 registration_bp = Blueprint("registration", __name__)
-
 
 
 @registration_bp.route("/register/identity", methods=["POST"])
@@ -15,13 +20,16 @@ def register_identity():
 
     data = request.get_json()
 
+
     if not data:
+        print("❌ BODY VACÍO")
         return jsonify({
             "success": False,
             "error": "Body vacío o inválido"
         }), 400
 
     error = validate_identity(data)
+
     if error:
         return jsonify({
             "success": False,
@@ -30,6 +38,7 @@ def register_identity():
 
     try:
         voter = create_voter(data)
+
 
         return jsonify({
             "success": True,
@@ -40,17 +49,18 @@ def register_identity():
         }), 201
 
     except Exception as e:
+        print("ERROR REGISTER:", e)
+
         return jsonify({
             "success": False,
             "error": "Error interno del servidor"
         }), 500
 
-
-
 @registration_bp.route("/register/voter/<voter_id>", methods=["GET"])
 def get_voter_route(voter_id):
 
     try:
+
         voter = get_voter(voter_id)
 
         if not voter:
@@ -62,14 +72,15 @@ def get_voter_route(voter_id):
         return jsonify({
             "success": True,
             "data": voter
-        })
+        }), 200
 
-    except Exception:
+    except Exception as e:
+        print("ERROR GET VOTER:", e)
+
         return jsonify({
             "success": False,
             "error": "Error interno del servidor"
         }), 500
-
 
 
 @registration_bp.route("/register/identity/<voter_id>", methods=["PUT"])
@@ -84,6 +95,7 @@ def update_identity(voter_id):
         }), 400
 
     error = validate_identity(data)
+
     if error:
         return jsonify({
             "success": False,
@@ -91,15 +103,73 @@ def update_identity(voter_id):
         }), 400
 
     try:
+
         update_voter(voter_id, data)
 
         return jsonify({
             "success": True,
             "message": "Actualizado correctamente"
-        })
+        }), 200
 
-    except Exception:
+    except Exception as e:
+        print("ERROR UPDATE:", e)
+
         return jsonify({
             "success": False,
             "error": "Error interno del servidor"
+        }), 500
+
+
+
+@registration_bp.route("/register/summary/<voter_id>", methods=["GET"])
+def registration_summary(voter_id):
+
+    try:
+
+        voter = get_voter(voter_id)
+
+        face = get_face(voter_id)
+
+        webauthn = get_webauthn(voter_id)
+
+        status = get_status(voter_id)
+
+        return jsonify({
+            "success": True,
+            "data": {
+                "voter": voter,
+                "face_registered": face is not None,
+                "webauthn_registered": webauthn is not None,
+                "status": status
+            }
+        }), 200
+
+    except Exception as e:
+        print("ERROR SUMMARY:", e)
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+
+@registration_bp.route("/register/complete/<voter_id>", methods=["PUT"])
+def complete_registration(voter_id):
+
+    try:
+
+        complete_registration_service(voter_id)
+
+        return jsonify({
+            "success": True,
+            "message": "Registro completado"
+        }), 200
+
+    except Exception as e:
+        print("ERROR COMPLETE:", e)
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
         }), 500
