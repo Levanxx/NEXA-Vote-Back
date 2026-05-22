@@ -22,7 +22,7 @@ def register_identity():
 
 
     if not data:
-        print("❌ BODY VACÍO")
+        print("BODY VACÍO")
         return jsonify({
             "success": False,
             "error": "Body vacío o inválido"

@@ -16,7 +16,7 @@ def create_voter(data):
     user_id = auth_user.user.id
 
     # 3. guardar voter
-    voter_response = supabase.table("voters").insert({
+    voter_response = supabase_admin.table("voters").insert({
         "dni": data["dni"],
         "full_name": data["full_name"],
         "birth_date": data["birth_date"],
@@ -27,7 +27,7 @@ def create_voter(data):
     voter = voter_response.data[0]
 
     # 4. status
-    supabase.table("registration_status").insert({
+    supabase_admin.table("registration_status").insert({
         "voter_id": voter["id"],
         "current_step": 1,
         "status": "pending"
@@ -44,8 +44,7 @@ def register_user_auth(email, password):
 
 
 def get_voter(voter_id):
-
-    response = supabase.table("voters") \
+    response = supabase_admin.table("voters") \
         .select("*") \
         .eq("id", voter_id) \
         .single() \
@@ -54,8 +53,7 @@ def get_voter(voter_id):
     return response.data
 
 def update_voter(voter_id, data):
-
-    response = supabase.table("voters") \
+    response = supabase_admin.table("voters") \
         .update({
             "dni": data["dni"],
             "full_name": data["full_name"],
