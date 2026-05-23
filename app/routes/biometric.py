@@ -9,7 +9,7 @@ def register_face():
 
     data = request.get_json()
 
-    print("DATA RECIBIDA:", data)  # 🔥 IMPORTANTE
+    print("DATA RECIBIDA:", data)  
 
     try:
         voter_id = data.get("voter_id")
@@ -29,7 +29,7 @@ def register_face():
         })
 
     except Exception as e:
-        print("ERROR BACKEND:", str(e))  # 🔥 CLAVE
+        print("ERROR BACKEND:", str(e))  
         return jsonify({
             "success": False,
             "error": str(e)

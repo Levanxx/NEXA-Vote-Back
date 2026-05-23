@@ -27,6 +27,10 @@ def save_webauthn(voter_id, credential_id):
             raise Exception("No data returned from upsert")
 
         return response.data
+    
+        
+    
+    
 
     except Exception as e:
         print("ERROR save_webauthn:", str(e))

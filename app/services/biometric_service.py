@@ -1,17 +1,17 @@
-from app.utils.supabase_client import supabase
+from app.utils.supabase_client import supabase, supabase_admin
 
 
 def save_face(voter_id, descriptor):
 
-    response = supabase.table("biometric_data").upsert({
+    descriptor_limpio = [float(x) for x in descriptor]
+
+    response = supabase_admin.table("biometric_data").upsert({
         "voter_id": voter_id,
-        "face_embedding": descriptor
+        "face_embedding": descriptor_limpio
     }, on_conflict="voter_id").execute()
 
-    # DEBUG REAL
     print("SUPABASE RESPONSE:", response)
 
-    # NO usar response.error
     if response.data is None:
         raise Exception("Error guardando biometría")
 

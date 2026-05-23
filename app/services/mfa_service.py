@@ -1,11 +1,23 @@
+import numpy as np
+import json
 from app.utils.supabase_client import supabase, supabase_admin
 
+
+# ─────────────────────────────────────────────
+# UTIL: normalizar DNI
+# ─────────────────────────────────────────────
+def normalize_dni(dni):
+    return str(dni).strip().replace(" ", "")
+
+
+# ─────────────────────────────────────────────
+# DNI MFA
+# ─────────────────────────────────────────────
 def validate_dni_mfa(token, dni_scanned):
 
     if not token:
         raise Exception("Token requerido")
 
-    # 1. validar JWT
     user_response = supabase.auth.get_user(token.replace("Bearer ", ""))
 
     if not user_response.user:
@@ -13,23 +25,23 @@ def validate_dni_mfa(token, dni_scanned):
 
     user = user_response.user
 
-    # 2. 🔥 USAR ADMIN CLIENT (ESTO ARREGLA EL ERROR 42501)
+    # ── BUSCAR VOTER ──────────────────────────
     voter_response = supabase_admin.table("voters") \
         .select("*") \
         .eq("auth_user_id", user.id) \
-        .single() \
+        .limit(1) \
         .execute()
 
-    voter = voter_response.data
-
-    if not voter:
+    if not voter_response.data:
         raise Exception("Votante no encontrado")
 
-    # 3. validar DNI
-    if str(voter["dni"]) != str(dni_scanned):
+    voter = voter_response.data[0]
+
+    # ── VALIDAR DNI ────────────────────────────
+    if normalize_dni(voter["dni"]) != normalize_dni(dni_scanned):
         raise Exception("DNI no coincide con el usuario")
 
-    # 4. actualizar estado MFA (también admin)
+    # ── UPDATE ESTADO ──────────────────────────
     supabase_admin.table("registration_status") \
         .update({
             "current_step": 2,
@@ -41,4 +53,78 @@ def validate_dni_mfa(token, dni_scanned):
     return {
         "message": "DNI validado correctamente",
         "voter_id": voter["id"]
+    }
+
+
+# ─────────────────────────────────────────────
+# FACE MFA
+# ─────────────────────────────────────────────
+def validate_face_mfa(token, descriptor_nuevo):
+
+    if not token:
+        raise Exception("Token requerido")
+
+    user_response = supabase.auth.get_user(token.replace("Bearer ", ""))
+
+    if not user_response.user:
+        raise Exception("Usuario no válido")
+
+    user = user_response.user
+
+    # ── VOTER ────────────────────────────────
+    voter_response = supabase_admin.table("voters") \
+        .select("id") \
+        .eq("auth_user_id", user.id) \
+        .limit(1) \
+        .execute()
+
+    if not voter_response.data:
+        raise Exception("Votante no encontrado")
+
+    voter = voter_response.data[0]
+
+    # ── BIOMETRÍA ─────────────────────────────
+    bio_response = supabase_admin.table("biometric_data") \
+        .select("face_embedding") \
+        .eq("voter_id", voter["id"]) \
+        .limit(1) \
+        .execute()
+
+    if not bio_response.data:
+        raise Exception("No hay biometría registrada")
+
+    raw = bio_response.data[0]["face_embedding"]
+
+    if isinstance(raw, str):
+        raw = json.loads(raw)
+
+    descriptor_guardado = np.array(raw, dtype=np.float64)
+    descriptor_recibido = np.array(descriptor_nuevo, dtype=np.float64)
+
+    if descriptor_guardado.shape[0] != 128 or descriptor_recibido.shape[0] != 128:
+        raise Exception("Descriptor inválido")
+
+    # ── COMPARACIÓN ───────────────────────────
+    distancia = np.linalg.norm(descriptor_guardado - descriptor_recibido)
+
+    print(f"DISTANCIA FACIAL: {distancia}")
+
+    UMBRAL = 0.50
+
+    if distancia > UMBRAL:
+        raise Exception(f"Rostro no coincide (distancia: {round(distancia, 4)})")
+
+    # ── UPDATE ESTADO ─────────────────────────
+    supabase_admin.table("registration_status") \
+        .update({
+            "current_step": 3,
+            "status": "face_validated"
+        }) \
+        .eq("voter_id", voter["id"]) \
+        .execute()
+
+    return {
+        "message": "Rostro validado correctamente",
+        "voter_id": voter["id"],
+        "distancia": round(distancia, 4)
     }

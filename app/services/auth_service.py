@@ -7,7 +7,7 @@ def login_voter(dni, password):
     voter_response = supabase.table("voters") \
         .select("*") \
         .eq("dni", dni) \
-        .single() \
+        .maybe_single() \
         .execute()
 
     if not voter_response.data:

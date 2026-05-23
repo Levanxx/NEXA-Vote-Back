@@ -7,7 +7,8 @@ from app.services.registration_service import (
     get_face,
     get_webauthn,
     get_status,
-    complete_registration_service
+    complete_registration_service,
+    create_voter_from_scan
 )
 
 from app.utils.validators import validate_identity
@@ -168,6 +169,39 @@ def complete_registration(voter_id):
 
     except Exception as e:
         print("ERROR COMPLETE:", e)
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+    
+
+@registration_bp.route("/register/identity/scan", methods=["POST"])
+def register_identity_scan():
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({
+            "success": False,
+            "error": "Body vacío"
+        }), 400
+
+    try:
+
+        voter = create_voter_from_scan(data)
+
+        return jsonify({
+            "success": True,
+            "message": "DNI registrado correctamente",
+            "data": {
+                "voter_id": voter["id"]
+            }
+        }), 201
+
+    except Exception as e:
+
+        print("ERROR SCAN:", e)
 
         return jsonify({
             "success": False,

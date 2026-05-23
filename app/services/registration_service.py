@@ -3,10 +3,7 @@ import uuid
 
 
 def create_voter(data):
-    # 1. VALIDAR PRIMERO (IMPORTANTE)
-    # DNI duplicado, email duplicado, etc
 
-    # 2. crear auth user
     auth_user = supabase_admin.auth.admin.create_user({
         "email": data["email"],
         "password": data["password"],
@@ -15,25 +12,26 @@ def create_voter(data):
 
     user_id = auth_user.user.id
 
-    # 3. guardar voter
     voter_response = supabase_admin.table("voters").insert({
         "dni": data["dni"],
         "full_name": data["full_name"],
         "birth_date": data["birth_date"],
         "email": data["email"],
-        "auth_user_id": user_id
+        "auth_user_id": user_id,
+        "registration_step": 2
     }).execute()
 
     voter = voter_response.data[0]
 
-    # 4. status
     supabase_admin.table("registration_status").insert({
         "voter_id": voter["id"],
-        "current_step": 1,
+        "current_step": 2,
         "status": "pending"
     }).execute()
 
     return voter
+
+
 
 def register_user_auth(email, password):
     return supabase.auth.admin.create_user({
@@ -53,18 +51,29 @@ def get_voter(voter_id):
     return response.data
 
 def update_voter(voter_id, data):
+
+    # 1. CREAR AUTH USER (SI NO EXISTE)
+    auth_user = supabase_admin.auth.admin.create_user({
+        "email": data["email"],
+        "password": data["password"],
+        "email_confirm": True
+    })
+
+    user_id = auth_user.user.id
+
+
     response = supabase_admin.table("voters") \
         .update({
             "dni": data["dni"],
             "full_name": data["full_name"],
-            "birth_date": data["birth_date"],
-            "email": data["email"]
+            "birth_date": data.get("birth_date"),
+            "email": data["email"],
+            "auth_user_id": user_id   
         }) \
         .eq("id", voter_id) \
         .execute()
 
     return response.data
-
 
 
 def get_face(voter_id):
@@ -111,3 +120,25 @@ def complete_registration_service(voter_id):
         .execute()
 
     return response.data
+
+
+def create_voter_from_scan(data):
+
+    voter_response = supabase_admin.table("voters").insert({
+        "dni": data["dni"],
+        "full_name": data["full_name"],
+        "birth_date": None,
+        "email": None,
+        "auth_user_id": None,
+        "registration_step": 1
+    }).execute()
+
+    voter = voter_response.data[0]
+
+    supabase_admin.table("registration_status").insert({
+        "voter_id": voter["id"],
+        "current_step": 1,
+        "status": "pending"
+    }).execute()
+
+    return voter
