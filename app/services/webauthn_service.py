@@ -1,6 +1,6 @@
 import os
 import base64
-from app.utils.supabase_client import supabase
+from app.utils.supabase_client import supabase, supabase_admin
 
 
 def generate_challenge():
@@ -10,7 +10,7 @@ def generate_challenge():
 def save_webauthn(voter_id, credential_id):
 
     try:
-        response = supabase.table("webauthn_credentials").upsert({
+        response = supabase_admin.table("webauthn_credentials").upsert({
         "voter_id": voter_id,
         "credential_id": credential_id,
         "public_key": "stored_by_browser",
@@ -28,10 +28,60 @@ def save_webauthn(voter_id, credential_id):
 
         return response.data
     
-        
-    
-    
-
     except Exception as e:
         print("ERROR save_webauthn:", str(e))
         raise
+
+def complete_mfa_webauthn(voter_id, credential_id):
+
+    response = supabase_admin.table("webauthn_credentials") \
+        .select("*") \
+        .eq("voter_id", voter_id) \
+        .limit(1) \
+        .execute()
+
+    if not response.data:
+        raise Exception("No existe WebAuthn registrado")
+
+    saved = response.data[0]["credential_id"]
+
+    print("SAVED:", saved)
+    print("RECEIVED:", credential_id)
+
+    if saved != credential_id:
+        raise Exception("Credential inválida")
+
+    supabase_admin.table("registration_status") \
+        .update({
+            "current_step": 4,
+            "status": "completed",
+            "completed_at": "now()"
+        }) \
+        .eq("voter_id", voter_id) \
+        .execute()
+
+    return True
+
+
+
+
+def verify_webauthn_login(voter_id, credential_id):
+
+    response = supabase_admin.table("webauthn_credentials") \
+        .select("*") \
+        .eq("voter_id", voter_id) \
+        .limit(1) \
+        .execute()
+
+    if not response.data:
+        raise Exception("No existe WebAuthn registrado")
+
+    saved_credential = response.data[0]["credential_id"]
+
+    print("SAVED:", saved_credential)
+    print("RECEIVED:", credential_id)
+
+    if saved_credential != credential_id:
+        raise Exception("Credential inválida")
+
+    return True

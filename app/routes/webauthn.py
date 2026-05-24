@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.services.webauthn_service import generate_challenge, save_webauthn
+from app.services.webauthn_service import generate_challenge, save_webauthn, verify_webauthn_login
 
 webauthn_bp = Blueprint("webauthn", __name__)
 
@@ -25,7 +25,7 @@ def verify():
         }), 400
 
     voter_id = data.get("voter_id")
-    credential_id = data.get("id")
+    credential_id = data.get("id")  
 
     if not voter_id or not credential_id:
         return jsonify({
@@ -46,3 +46,37 @@ def verify():
             "success": False,
             "error": str(e)
         }), 500
+    
+@webauthn_bp.route("/webauthn/auth/options", methods=["POST"])
+def auth_options():
+
+    return jsonify({
+        "success": True,
+        "challenge": generate_challenge()
+    }), 200
+
+
+
+@webauthn_bp.route("/webauthn/auth/verify", methods=["POST"])
+def auth_verify():
+
+    data = request.get_json()
+
+    voter_id = data.get("voter_id")
+    credential_id = data.get("id")  
+
+    try:
+
+        verify_webauthn_login(voter_id, credential_id)
+
+        return jsonify({
+            "success": True,
+            "message": "WebAuthn validado"
+        }), 200
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 401
