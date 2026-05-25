@@ -20,6 +20,10 @@ def create_app():
         "http://localhost:5173"
     ).split(",")
 
+    @app.route("/")
+    def health():
+        return {"status": "ok"}, 200
+
     CORS(app, origins=allowed_origins)
 
     app.register_blueprint(registration_bp)
