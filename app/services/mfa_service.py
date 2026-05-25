@@ -1,6 +1,6 @@
 import numpy as np
 import json
-from app.utils.supabase_client import supabase, supabase_admin
+from app.utils.supabase_client import get_supabase, get_supabase_admin
 
 
 
@@ -13,14 +13,14 @@ def validate_dni_mfa(token, dni_scanned):
     if not token:
         raise Exception("Token requerido")
 
-    user_response = supabase.auth.get_user(token.replace("Bearer ", ""))
+    user_response = get_supabase.auth.get_user(token.replace("Bearer ", ""))
 
     if not user_response.user:
         raise Exception("Usuario no válido")
 
     user = user_response.user
 
-    voter_response = supabase_admin.table("voters") \
+    voter_response = get_supabase_admin.table("voters") \
         .select("*") \
         .eq("auth_user_id", user.id) \
         .limit(1) \
@@ -34,7 +34,7 @@ def validate_dni_mfa(token, dni_scanned):
     if normalize_dni(voter["dni"]) != normalize_dni(dni_scanned):
         raise Exception("DNI no coincide con el usuario")
 
-    supabase_admin.table("registration_status") \
+    get_supabase_admin.table("registration_status") \
         .update({
             "current_step": 2,
             "status": "dni_validated"
@@ -53,14 +53,14 @@ def validate_face_mfa(token, descriptor_nuevo):
     if not token:
         raise Exception("Token requerido")
 
-    user_response = supabase.auth.get_user(token.replace("Bearer ", ""))
+    user_response = get_supabase.auth.get_user(token.replace("Bearer ", ""))
 
     if not user_response.user:
         raise Exception("Usuario no válido")
 
     user = user_response.user
 
-    voter_response = supabase_admin.table("voters") \
+    voter_response = get_supabase_admin.table("voters") \
         .select("id") \
         .eq("auth_user_id", user.id) \
         .limit(1) \
@@ -71,7 +71,7 @@ def validate_face_mfa(token, descriptor_nuevo):
 
     voter = voter_response.data[0]
 
-    bio_response = supabase_admin.table("biometric_data") \
+    bio_response = get_supabase_admin.table("biometric_data") \
         .select("face_embedding") \
         .eq("voter_id", voter["id"]) \
         .limit(1) \
@@ -101,7 +101,7 @@ def validate_face_mfa(token, descriptor_nuevo):
     if distancia > UMBRAL:
         raise Exception(f"Rostro no coincide (distancia: {round(distancia, 4)})")
 
-    supabase_admin.table("registration_status") \
+    get_supabase_admin.table("registration_status") \
         .update({
             "current_step": 3,
             "status": "face_validated"

@@ -1,6 +1,6 @@
 import os
 import base64
-from app.utils.supabase_client import supabase, supabase_admin
+from app.utils.supabase_client import get_supabase, get_supabase_admin
 
 
 def generate_challenge():
@@ -10,7 +10,7 @@ def generate_challenge():
 def save_webauthn(voter_id, credential_id):
 
     try:
-        response = supabase_admin.table("webauthn_credentials").upsert({
+        response = get_supabase_admin.table("webauthn_credentials").upsert({
         "voter_id": voter_id,
         "credential_id": credential_id,
         "public_key": "stored_by_browser",
@@ -34,7 +34,7 @@ def save_webauthn(voter_id, credential_id):
 
 def complete_mfa_webauthn(voter_id, credential_id):
 
-    response = supabase_admin.table("webauthn_credentials") \
+    response = get_supabase_admin.table("webauthn_credentials") \
         .select("*") \
         .eq("voter_id", voter_id) \
         .limit(1) \
@@ -51,7 +51,7 @@ def complete_mfa_webauthn(voter_id, credential_id):
     if saved != credential_id:
         raise Exception("Credential inválida")
 
-    supabase_admin.table("registration_status") \
+    get_supabase_admin.table("registration_status") \
         .update({
             "current_step": 4,
             "status": "completed",
@@ -64,7 +64,7 @@ def complete_mfa_webauthn(voter_id, credential_id):
 
 
 def verify_webauthn_login(voter_id, credential_id):
-    response = supabase_admin.table("webauthn_credentials") \
+    response = get_supabase_admin.table("webauthn_credentials") \
         .select("*") \
         .eq("voter_id", voter_id) \
         .limit(1) \

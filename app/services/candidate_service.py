@@ -1,8 +1,8 @@
-from app.utils.supabase_client import supabase_admin
+from app.utils.supabase_client import get_supabase_admin
 
 
 def get_active_candidates():
-    response = supabase_admin.table("candidates") \
+    response = get_supabase_admin.table("candidates") \
         .select("*") \
         .eq("is_active", True) \
         .execute()

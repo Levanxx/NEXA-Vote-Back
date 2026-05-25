@@ -1,4 +1,4 @@
-from app.utils.supabase_client import supabase_admin
+from app.utils.supabase_client import get_supabase_admin
 import uuid
 import hashlib
 
@@ -12,14 +12,14 @@ def get_voter_from_token(request):
 
     token = auth.replace("Bearer ", "")
 
-    user = supabase_admin.auth.get_user(token)
+    user = get_supabase_admin.auth.get_user(token)
 
     if not user or not user.user:
         raise Exception("Token inválido")
 
     auth_user_id = user.user.id
 
-    voter = supabase_admin.table("voters") \
+    voter = get_supabase_admin.table("voters") \
         .select("id") \
         .eq("auth_user_id", auth_user_id) \
         .maybe_single() \
@@ -33,7 +33,7 @@ def get_voter_from_token(request):
 def cast_vote(voter_id, candidate_id):
 
     # 1. verificar voto previo
-    existing = supabase_admin.table("votes") \
+    existing = get_supabase_admin.table("votes") \
         .select("*") \
         .eq("voter_id", voter_id) \
         .execute()
@@ -49,7 +49,7 @@ def cast_vote(voter_id, candidate_id):
     ).hexdigest()
 
     # 3. insertar
-    response = supabase_admin.table("votes").insert({
+    response = get_supabase_admin.table("votes").insert({
         "voter_id": voter_id,
         "candidate_id": candidate_id,
         "vote_code": vote_code,
@@ -59,11 +59,11 @@ def cast_vote(voter_id, candidate_id):
     return response.data
 
 def get_results():
-    candidates = supabase_admin.table("candidates") \
+    candidates = get_supabase_admin.table("candidates") \
         .select("id, name, photo_url") \
         .execute().data
 
-    votes = supabase_admin.table("votes") \
+    votes = get_supabase_admin.table("votes") \
         .select("candidate_id") \
         .execute().data
 
@@ -87,7 +87,7 @@ def get_results():
     return list(results.values())
 
 def get_total_votes():
-    response = supabase_admin.table("votes") \
+    response = get_supabase_admin.table("votes") \
         .select("id", count="exact") \
         .execute()
 
@@ -96,7 +96,7 @@ def get_total_votes():
 def get_turnout():
     TOTAL_VOTERS = 150  # mock fijo
 
-    total_votes = supabase_admin.table("votes") \
+    total_votes = get_supabase_admin.table("votes") \
         .select("id", count="exact") \
         .execute()
 
@@ -107,7 +107,7 @@ def get_turnout():
 def get_turnout_detailed():
     TOTAL_VOTERS = 150
 
-    total_votes = supabase_admin.table("votes") \
+    total_votes = get_supabase_admin.table("votes") \
         .select("id", count="exact") \
         .execute()
 

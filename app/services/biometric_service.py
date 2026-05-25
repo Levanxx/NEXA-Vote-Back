@@ -1,11 +1,11 @@
-from app.utils.supabase_client import supabase, supabase_admin
+from app.utils.supabase_client import get_supabase, get_supabase_admin
 
 
 def save_face(voter_id, descriptor):
 
     descriptor_limpio = [float(x) for x in descriptor]
 
-    response = supabase_admin.table("biometric_data").upsert({
+    response = get_supabase_admin.table("biometric_data").upsert({
         "voter_id": voter_id,
         "face_embedding": descriptor_limpio
     }, on_conflict="voter_id").execute()

@@ -1,10 +1,10 @@
-from app.utils.supabase_client import supabase, supabase_admin
+from app.utils.supabase_client import get_supabase, get_supabase_admin
 import uuid
 
 
 def create_voter(data):
 
-    auth_user = supabase_admin.auth.admin.create_user({
+    auth_user = get_supabase_admin.auth.admin.create_user({
         "email": data["email"],
         "password": data["password"],
         "email_confirm": True
@@ -12,7 +12,7 @@ def create_voter(data):
 
     user_id = auth_user.user.id
 
-    voter_response = supabase_admin.table("voters").insert({
+    voter_response = get_supabase_admin.table("voters").insert({
         "dni": data["dni"],
         "full_name": data["full_name"],
         "birth_date": data["birth_date"],
@@ -23,7 +23,7 @@ def create_voter(data):
 
     voter = voter_response.data[0]
 
-    supabase_admin.table("registration_status").insert({
+    get_supabase_admin.table("registration_status").insert({
         "voter_id": voter["id"],
         "current_step": 2,
         "status": "pending"
@@ -34,7 +34,7 @@ def create_voter(data):
 
 
 def register_user_auth(email, password):
-    return supabase.auth.admin.create_user({
+    return get_supabase.auth.admin.create_user({
         "email": email,
         "password": password,
         "email_confirm": True
@@ -42,7 +42,7 @@ def register_user_auth(email, password):
 
 
 def get_voter(voter_id):
-    response = supabase_admin.table("voters") \
+    response = get_supabase_admin.table("voters") \
         .select("*") \
         .eq("id", voter_id) \
         .single() \
@@ -53,7 +53,7 @@ def get_voter(voter_id):
 def update_voter(voter_id, data):
 
     # 1. CREAR AUTH USER (SI NO EXISTE)
-    auth_user = supabase_admin.auth.admin.create_user({
+    auth_user = get_supabase_admin.auth.admin.create_user({
         "email": data["email"],
         "password": data["password"],
         "email_confirm": True
@@ -62,7 +62,7 @@ def update_voter(voter_id, data):
     user_id = auth_user.user.id
 
 
-    response = supabase_admin.table("voters") \
+    response = get_supabase_admin.table("voters") \
         .update({
             "dni": data["dni"],
             "full_name": data["full_name"],
@@ -78,7 +78,7 @@ def update_voter(voter_id, data):
 
 def get_face(voter_id):
 
-    response = supabase.table("biometric_data") \
+    response = get_supabase.table("biometric_data") \
         .select("*") \
         .eq("voter_id", voter_id) \
         .maybe_single() \
@@ -89,7 +89,7 @@ def get_face(voter_id):
 
 def get_webauthn(voter_id):
 
-    response = supabase.table("webauthn_credentials") \
+    response = get_supabase.table("webauthn_credentials") \
         .select("*") \
         .eq("voter_id", voter_id) \
         .maybe_single() \
@@ -100,7 +100,7 @@ def get_webauthn(voter_id):
 
 def get_status(voter_id):
 
-    response = supabase.table("registration_status") \
+    response = get_supabase.table("registration_status") \
         .select("*") \
         .eq("voter_id", voter_id) \
         .single() \
@@ -111,7 +111,7 @@ def get_status(voter_id):
 
 def complete_registration_service(voter_id):
 
-    response = supabase.table("registration_status") \
+    response = get_supabase.table("registration_status") \
         .update({
             "current_step": 4,
             "status": "completed"
@@ -124,7 +124,7 @@ def complete_registration_service(voter_id):
 
 def create_voter_from_scan(data):
 
-    voter_response = supabase_admin.table("voters").insert({
+    voter_response = get_supabase_admin.table("voters").insert({
         "dni": data["dni"],
         "full_name": data["full_name"],
         "birth_date": None,
@@ -135,7 +135,7 @@ def create_voter_from_scan(data):
 
     voter = voter_response.data[0]
 
-    supabase_admin.table("registration_status").insert({
+    get_supabase_admin.table("registration_status").insert({
         "voter_id": voter["id"],
         "current_step": 1,
         "status": "pending"
