@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.services.vote_service import cast_vote, get_voter_from_token, get_results, get_total_votes, get_turnout
+from app.services.vote_service import cast_vote, get_voter_from_token, get_results, get_total_votes, get_turnout, get_turnout_detailed
 
 votes_bp = Blueprint("votes", __name__, url_prefix="/api/votes")
 
@@ -54,3 +54,10 @@ def total():
 @votes_bp.route("/turnout", methods=["GET"])
 def turnout():
     return jsonify({"success": True, "percentage": get_turnout()}), 200
+
+@votes_bp.route("/turnout-detailed", methods=["GET"])
+def turnout_detailed():
+    return jsonify({
+        "success": True,
+        **get_turnout_detailed()
+    }), 200

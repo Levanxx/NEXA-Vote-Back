@@ -3,16 +3,11 @@ import json
 from app.utils.supabase_client import supabase, supabase_admin
 
 
-# ─────────────────────────────────────────────
-# UTIL: normalizar DNI
-# ─────────────────────────────────────────────
+
 def normalize_dni(dni):
     return str(dni).strip().replace(" ", "")
 
 
-# ─────────────────────────────────────────────
-# DNI MFA
-# ─────────────────────────────────────────────
 def validate_dni_mfa(token, dni_scanned):
 
     if not token:
@@ -25,7 +20,6 @@ def validate_dni_mfa(token, dni_scanned):
 
     user = user_response.user
 
-    # ── BUSCAR VOTER ──────────────────────────
     voter_response = supabase_admin.table("voters") \
         .select("*") \
         .eq("auth_user_id", user.id) \
@@ -37,11 +31,9 @@ def validate_dni_mfa(token, dni_scanned):
 
     voter = voter_response.data[0]
 
-    # ── VALIDAR DNI ────────────────────────────
     if normalize_dni(voter["dni"]) != normalize_dni(dni_scanned):
         raise Exception("DNI no coincide con el usuario")
 
-    # ── UPDATE ESTADO ──────────────────────────
     supabase_admin.table("registration_status") \
         .update({
             "current_step": 2,
@@ -56,9 +48,6 @@ def validate_dni_mfa(token, dni_scanned):
     }
 
 
-# ─────────────────────────────────────────────
-# FACE MFA
-# ─────────────────────────────────────────────
 def validate_face_mfa(token, descriptor_nuevo):
 
     if not token:
@@ -71,7 +60,6 @@ def validate_face_mfa(token, descriptor_nuevo):
 
     user = user_response.user
 
-    # ── VOTER ────────────────────────────────
     voter_response = supabase_admin.table("voters") \
         .select("id") \
         .eq("auth_user_id", user.id) \
@@ -83,7 +71,6 @@ def validate_face_mfa(token, descriptor_nuevo):
 
     voter = voter_response.data[0]
 
-    # ── BIOMETRÍA ─────────────────────────────
     bio_response = supabase_admin.table("biometric_data") \
         .select("face_embedding") \
         .eq("voter_id", voter["id"]) \
@@ -104,7 +91,7 @@ def validate_face_mfa(token, descriptor_nuevo):
     if descriptor_guardado.shape[0] != 128 or descriptor_recibido.shape[0] != 128:
         raise Exception("Descriptor inválido")
 
-    # ── COMPARACIÓN ───────────────────────────
+
     distancia = np.linalg.norm(descriptor_guardado - descriptor_recibido)
 
     print(f"DISTANCIA FACIAL: {distancia}")
@@ -114,7 +101,6 @@ def validate_face_mfa(token, descriptor_nuevo):
     if distancia > UMBRAL:
         raise Exception(f"Rostro no coincide (distancia: {round(distancia, 4)})")
 
-    # ── UPDATE ESTADO ─────────────────────────
     supabase_admin.table("registration_status") \
         .update({
             "current_step": 3,

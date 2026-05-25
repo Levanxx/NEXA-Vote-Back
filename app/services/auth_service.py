@@ -1,10 +1,10 @@
-from app.utils.supabase_client import supabase
+from app.utils.supabase_client import supabase, supabase_admin
 
 
 def login_voter(dni, password):
 
-    # 1. buscar voter por DNI
-    voter_response = supabase.table("voters") \
+
+    voter_response = supabase_admin.table("voters") \
         .select("*") \
         .eq("dni", dni) \
         .maybe_single() \
@@ -16,7 +16,6 @@ def login_voter(dni, password):
     voter = voter_response.data
     email = voter["email"]
 
-    # 2. login en Supabase Auth
     auth_response = supabase.auth.sign_in_with_password({
         "email": email,
         "password": password
@@ -27,11 +26,21 @@ def login_voter(dni, password):
 
     session = auth_response.session
 
+    voter_id = voter["id"]  
+
+    existing = supabase_admin.table("votes") \
+        .select("id") \
+        .eq("voter_id", voter_id) \
+        .execute()
+
+    has_voted = len(existing.data) > 0
+
     return {
         "token": session.access_token,
         "user": {
             "id": voter["id"],
             "dni": voter["dni"],
             "email": voter["email"]
-        }
+        },
+        "has_voted": has_voted   
     }

@@ -59,9 +59,32 @@ def cast_vote(voter_id, candidate_id):
     return response.data
 
 def get_results():
-    response = supabase_admin.table("vote_results").select("*").execute()
-    return response.data
+    candidates = supabase_admin.table("candidates") \
+        .select("id, name, photo_url") \
+        .execute().data
 
+    votes = supabase_admin.table("votes") \
+        .select("candidate_id") \
+        .execute().data
+
+    results = {}
+
+    # inicializar todos en 0
+    for c in candidates:
+        results[c["id"]] = {
+            "candidate_id": c["id"],
+            "candidate_name": c["name"],
+            "photo_url": c["photo_url"],
+            "total": 0
+        }
+
+    # contar votos
+    for v in votes:
+        cid = v["candidate_id"]
+        if cid in results:
+            results[cid]["total"] += 1
+
+    return list(results.values())
 
 def get_total_votes():
     response = supabase_admin.table("votes") \
@@ -71,7 +94,7 @@ def get_total_votes():
     return response.count or 0
 
 def get_turnout():
-    TOTAL_VOTERS = 100  # mock fijo
+    TOTAL_VOTERS = 150  # mock fijo
 
     total_votes = supabase_admin.table("votes") \
         .select("id", count="exact") \
@@ -80,3 +103,20 @@ def get_turnout():
     voted = total_votes.count or 0
 
     return round((voted / TOTAL_VOTERS) * 100, 2)
+
+def get_turnout_detailed():
+    TOTAL_VOTERS = 150
+
+    total_votes = supabase_admin.table("votes") \
+        .select("id", count="exact") \
+        .execute()
+
+    voted = total_votes.count or 0
+
+    percentage = round((voted / TOTAL_VOTERS) * 100, 2)
+
+    return {
+        "voted": voted,
+        "total_voters": TOTAL_VOTERS,
+        "percentage": percentage
+    }
