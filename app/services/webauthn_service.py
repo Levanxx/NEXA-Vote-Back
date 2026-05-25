@@ -63,25 +63,9 @@ def complete_mfa_webauthn(voter_id, credential_id):
     return True
 
 
-
-
 def verify_webauthn_login(voter_id, credential_id):
-
     response = supabase_admin.table("webauthn_credentials") \
         .select("*") \
         .eq("voter_id", voter_id) \
         .limit(1) \
         .execute()
-
-    if not response.data:
-        raise Exception("No existe WebAuthn registrado")
-
-    saved_credential = response.data[0]["credential_id"]
-
-    print("SAVED:", saved_credential)
-    print("RECEIVED:", credential_id)
-
-    if saved_credential != credential_id:
-        raise Exception("Credential inválida")
-
-    return True

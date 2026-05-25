@@ -6,6 +6,7 @@ from app.routes.biometric import biometric_bp
 from app.routes.webauthn import webauthn_bp
 from app.routes.auth import auth_bp
 from app.routes.mfa import mfa_bp
+from app.routes.candidates import candidates_bp
 
 
 def create_app():
@@ -20,6 +21,7 @@ def create_app():
     app.register_blueprint(webauthn_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(mfa_bp)
+    app.register_blueprint(candidates_bp)
 
 
     return app

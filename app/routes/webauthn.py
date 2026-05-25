@@ -56,14 +56,18 @@ def auth_options():
     }), 200
 
 
-
 @webauthn_bp.route("/webauthn/auth/verify", methods=["POST"])
 def auth_verify():
 
     data = request.get_json()
+    if not data:
+        return jsonify({
+            "success": False,
+            "error": "Body requerido"
+        }), 400
 
     voter_id = data.get("voter_id")
-    credential_id = data.get("id")  
+    credential_id = data.get("id")
 
     try:
 
