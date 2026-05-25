@@ -1,3 +1,4 @@
+import os
 from flask import Flask
 from flask_cors import CORS
 
@@ -12,11 +13,14 @@ from app.routes.admin import admin_bp
 
 
 def create_app():
-
     app = Flask(__name__)
 
-    CORS(app, origins=["http://localhost:5173"])
+    allowed_origins = os.environ.get(
+        "ALLOWED_ORIGINS",
+        "http://localhost:5173"
+    ).split(",")
 
+    CORS(app, origins=allowed_origins)
 
     app.register_blueprint(registration_bp)
     app.register_blueprint(biometric_bp)
@@ -26,6 +30,5 @@ def create_app():
     app.register_blueprint(candidates_bp)
     app.register_blueprint(votes_bp)
     app.register_blueprint(admin_bp)
-
 
     return app
