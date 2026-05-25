@@ -9,4 +9,4 @@ COPY . .
 
 EXPOSE 10000
 
-CMD sh -c "gunicorn -w 1 --timeout 120 -b 0.0.0.0:${PORT:-10000} app:app"
+CMD sh -c "gunicorn -w 1 --timeout 120 -b 0.0.0.0:${PORT:-10000} 'run:app'"
