@@ -2,8 +2,10 @@ from app.utils.supabase_client import get_supabase, get_supabase_admin
 
 
 def login_admin(email, password):
+    supabase = get_supabase()          
+    supabase_admin = get_supabase_admin()  
 
-    auth_response = get_supabase.auth.sign_in_with_password({
+    auth_response = supabase.auth.sign_in_with_password({
         "email": email,
         "password": password
     })
@@ -13,7 +15,7 @@ def login_admin(email, password):
 
     user = auth_response.user
 
-    admin_response = get_supabase_admin.table("admins") \
+    admin_response = supabase_admin.table("admins") \
         .select("*") \
         .eq("auth_user_id", user.id) \
         .maybe_single() \

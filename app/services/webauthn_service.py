@@ -1,6 +1,6 @@
 import os
 import base64
-from app.utils.supabase_client import get_supabase, get_supabase_admin
+from app.utils.supabase_client import get_supabase_admin
 
 
 def generate_challenge():
@@ -8,33 +8,33 @@ def generate_challenge():
 
 
 def save_webauthn(voter_id, credential_id):
-
+    supabase_admin = get_supabase_admin()
     try:
-        response = get_supabase_admin.table("webauthn_credentials").upsert({
-        "voter_id": voter_id,
-        "credential_id": credential_id,
-        "public_key": "stored_by_browser",
-        "sign_count": 0
+        response = supabase_admin.table("webauthn_credentials").upsert({
+            "voter_id": voter_id,
+            "credential_id": credential_id,
+            "public_key": "stored_by_browser",
+            "sign_count": 0
         }, on_conflict="voter_id").execute()
 
         if response is None:
             raise Exception("No response from Supabase")
-
         if hasattr(response, "error") and response.error:
             raise Exception(response.error)
-
         if not response.data:
             raise Exception("No data returned from upsert")
 
         return response.data
-    
+
     except Exception as e:
         print("ERROR save_webauthn:", str(e))
         raise
 
-def complete_mfa_webauthn(voter_id, credential_id):
 
-    response = get_supabase_admin.table("webauthn_credentials") \
+def complete_mfa_webauthn(voter_id, credential_id):
+    supabase_admin = get_supabase_admin()
+
+    response = supabase_admin.table("webauthn_credentials") \
         .select("*") \
         .eq("voter_id", voter_id) \
         .limit(1) \
@@ -51,7 +51,7 @@ def complete_mfa_webauthn(voter_id, credential_id):
     if saved != credential_id:
         raise Exception("Credential inválida")
 
-    get_supabase_admin.table("registration_status") \
+    supabase_admin.table("registration_status") \
         .update({
             "current_step": 4,
             "status": "completed",
@@ -64,7 +64,8 @@ def complete_mfa_webauthn(voter_id, credential_id):
 
 
 def verify_webauthn_login(voter_id, credential_id):
-    response = get_supabase_admin.table("webauthn_credentials") \
+    supabase_admin = get_supabase_admin()
+    response = supabase_admin.table("webauthn_credentials") \
         .select("*") \
         .eq("voter_id", voter_id) \
         .limit(1) \
