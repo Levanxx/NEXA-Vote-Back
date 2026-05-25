@@ -1,10 +1,10 @@
 import os
-print("=== Iniciando run.py ===")
+print("=== 1. Iniciando run.py ===", flush=True)
 from app import create_app
-print("=== create_app importado ===")
+print("=== 2. create_app importado ===", flush=True)
 
 app = create_app()
-print("=== App creada ===")
+print("=== 3. App creada ===", flush=True)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
