@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify
 from app.services.auth_service import login_voter
+from app.extensions import limiter
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 @auth_bp.route("/login", methods=["POST"])
+@limiter.limit("5 per minute")
 def login():
 
     data = request.get_json()

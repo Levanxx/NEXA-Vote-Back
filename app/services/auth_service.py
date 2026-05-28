@@ -1,8 +1,8 @@
-from app.utils.supabase_client import get_supabase, get_supabase_admin
+from app.utils.supabase_client import get_supabase_admin
+from app.services.audit_service import log_action
 
 
 def login_voter(dni, password):
-    supabase = get_supabase()
     supabase_admin = get_supabase_admin()
 
     voter_response = supabase_admin.table("voters") \
@@ -17,7 +17,7 @@ def login_voter(dni, password):
     voter = voter_response.data
     email = voter["email"]
 
-    auth_response = supabase.auth.sign_in_with_password({
+    auth_response = supabase_admin.auth.sign_in_with_password({
         "email": email,
         "password": password
     })
@@ -28,12 +28,13 @@ def login_voter(dni, password):
     session = auth_response.session
     voter_id = voter["id"]
 
-    existing = supabase_admin.table("votes") \
+    existing = supabase_admin.table("vote_tokens") \
         .select("id") \
         .eq("voter_id", voter_id) \
         .execute()
 
     has_voted = len(existing.data) > 0
+
 
     return {
         "token": session.access_token,

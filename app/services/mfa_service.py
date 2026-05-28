@@ -1,20 +1,19 @@
 import numpy as np
 import json
-from app.utils.supabase_client import get_supabase, get_supabase_admin
-
+from app.utils.supabase_client import get_supabase_admin
+from app.services.audit_service import log_action
 
 def normalize_dni(dni):
     return str(dni).strip().replace(" ", "")
 
 
 def validate_dni_mfa(token, dni_scanned):
-    supabase = get_supabase()
     supabase_admin = get_supabase_admin()
 
     if not token:
         raise Exception("Token requerido")
 
-    user_response = supabase.auth.get_user(token.replace("Bearer ", ""))
+    user_response = supabase_admin.auth.get_user(token.replace("Bearer ", ""))
 
     if not user_response.user:
         raise Exception("Usuario no válido")
@@ -50,13 +49,12 @@ def validate_dni_mfa(token, dni_scanned):
 
 
 def validate_face_mfa(token, descriptor_nuevo):
-    supabase = get_supabase()
     supabase_admin = get_supabase_admin()
 
     if not token:
         raise Exception("Token requerido")
 
-    user_response = supabase.auth.get_user(token.replace("Bearer ", ""))
+    user_response = supabase_admin.auth.get_user(token.replace("Bearer ", ""))
 
     if not user_response.user:
         raise Exception("Usuario no válido")
@@ -95,9 +93,9 @@ def validate_face_mfa(token, descriptor_nuevo):
 
     distancia = np.linalg.norm(descriptor_guardado - descriptor_recibido)
     print(f"DISTANCIA FACIAL: {distancia}")
-
     UMBRAL = 0.50
     if distancia > UMBRAL:
+        log_action("FACE_VERIFIED", "failed", voter["id"], metadata={"distance": round(distancia, 4)})  # ← acá (línea 100)
         raise Exception(f"Rostro no coincide (distancia: {round(distancia, 4)})")
 
     supabase_admin.table("registration_status") \

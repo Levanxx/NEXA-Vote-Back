@@ -1,4 +1,4 @@
-from app.utils.supabase_client import get_supabase, get_supabase_admin
+from app.utils.supabase_client import  get_supabase_admin, get_supabase
 import uuid
 
 
@@ -54,15 +54,24 @@ def get_voter(voter_id):
 
 def update_voter(voter_id, data):
     supabase_admin = get_supabase_admin()
-
-    auth_user = supabase_admin.auth.admin.create_user({
-        "email": data["email"],
-        "password": data["password"],
-        "email_confirm": True
-    })
-
-    user_id = auth_user.user.id
-
+    existing = supabase_admin.table("voters") \
+        .select("auth_user_id") \
+        .eq("id", voter_id) \
+        .maybe_single() \
+        .execute()
+    if existing.data and existing.data.get("auth_user_id"):
+        supabase_admin.auth.admin.update_user_by_id(
+            existing.data["auth_user_id"],
+            {"email": data["email"]}
+        )
+        user_id = existing.data["auth_user_id"]
+    else:
+        auth_user = supabase_admin.auth.admin.create_user({
+            "email": data["email"],
+            "password": data["password"],
+            "email_confirm": True
+        })
+        user_id = auth_user.user.id
     response = supabase_admin.table("voters") \
         .update({
             "dni": data["dni"],
@@ -73,12 +82,20 @@ def update_voter(voter_id, data):
         }) \
         .eq("id", voter_id) \
         .execute()
-    return response.data
+    
+    anon = get_supabase()
+    auth_response = anon.auth.sign_in_with_password({
+        "email": data["email"],
+        "password": data["password"]
+    })
+    token = auth_response.session.access_token
+
+    return response.data, token
 
 
 def get_face(voter_id):
-    supabase = get_supabase()
-    response = supabase.table("biometric_data") \
+    supabase_admin = get_supabase_admin()
+    response = supabase_admin.table("biometric_data") \
         .select("*") \
         .eq("voter_id", voter_id) \
         .maybe_single() \
@@ -87,8 +104,8 @@ def get_face(voter_id):
 
 
 def get_webauthn(voter_id):
-    supabase = get_supabase()
-    response = supabase.table("webauthn_credentials") \
+    supabase_admin = get_supabase_admin()
+    response = supabase_admin.table("webauthn_credentials") \
         .select("*") \
         .eq("voter_id", voter_id) \
         .maybe_single() \
@@ -97,8 +114,8 @@ def get_webauthn(voter_id):
 
 
 def get_status(voter_id):
-    supabase = get_supabase()
-    response = supabase.table("registration_status") \
+    supabase_admin = get_supabase_admin()
+    response = supabase_admin.table("registration_status") \
         .select("*") \
         .eq("voter_id", voter_id) \
         .single() \
@@ -107,8 +124,8 @@ def get_status(voter_id):
 
 
 def complete_registration_service(voter_id):
-    supabase = get_supabase()
-    response = supabase.table("registration_status") \
+    supabase_admin = get_supabase_admin()
+    response = supabase_admin.table("registration_status") \
         .update({
             "current_step": 4,
             "status": "completed"

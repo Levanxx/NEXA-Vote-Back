@@ -70,3 +70,9 @@ def verify_webauthn_login(voter_id, credential_id):
         .eq("voter_id", voter_id) \
         .limit(1) \
         .execute()
+    if not response.data:
+        raise Exception("No hay WebAuthn registrado")
+    saved = response.data[0]["credential_id"]
+    if saved != credential_id:
+        raise Exception("Credencial no coincide")
+    return True

@@ -1,10 +1,12 @@
 from flask import Blueprint, request, jsonify
 from app.services.webauthn_service import generate_challenge, save_webauthn, verify_webauthn_login
+from app.middleware.auth_middleware import require_auth
 
 webauthn_bp = Blueprint("webauthn", __name__)
 
 
 @webauthn_bp.route("/webauthn/register/options", methods=["POST"])
+@require_auth
 def options():
 
     return jsonify({
@@ -14,6 +16,7 @@ def options():
 
 
 @webauthn_bp.route("/webauthn/register/verify", methods=["POST"])
+@require_auth
 def verify():
 
     data = request.get_json()
@@ -48,6 +51,7 @@ def verify():
         }), 500
     
 @webauthn_bp.route("/webauthn/auth/options", methods=["POST"])
+@require_auth 
 def auth_options():
 
     return jsonify({
@@ -57,6 +61,7 @@ def auth_options():
 
 
 @webauthn_bp.route("/webauthn/auth/verify", methods=["POST"])
+@require_auth
 def auth_verify():
 
     data = request.get_json()

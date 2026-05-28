@@ -1,4 +1,6 @@
+import os
 from app.utils.supabase_client import get_supabase_admin
+from app.services.audit_service import log_action
 import uuid
 import hashlib
 
@@ -33,25 +35,42 @@ def get_voter_from_token(request):
 def cast_vote(voter_id, candidate_id):
     supabase_admin = get_supabase_admin()
 
-    existing = supabase_admin.table("votes") \
+    candidate = supabase_admin.table("candidates") \
+        .select("id") \
+        .eq("id", candidate_id) \
+        .maybe_single() \
+        .execute()
+    
+    if not candidate.data:
+        raise Exception("Candidato no encontrado")
+    
+
+    existing = supabase_admin.table("vote_tokens") \
         .select("*") \
         .eq("voter_id", voter_id) \
         .execute()
-
     if existing.data:
+        log_action("VOTE_FAILED", "failed", voter_id, metadata={"reason": "already_voted"})  # ← acá
         raise Exception("El votante ya emitió su voto")
+    
 
     vote_code = str(uuid.uuid4())
-    vote_hash = hashlib.sha256(
-        f"{voter_id}{candidate_id}{vote_code}".encode()
-    ).hexdigest()
+    token = str(uuid.uuid4())
+    secret = os.environ["VOTE_SECRET_KEY"]
+    token_hash = hashlib.sha256(f"{token}{secret}".encode()).hexdigest()
 
-    response = supabase_admin.table("votes").insert({
+
+    supabase_admin.table("vote_tokens").insert({
         "voter_id": voter_id,
-        "candidate_id": candidate_id,
-        "vote_code": vote_code,
-        "vote_hash": vote_hash
+        "token": token
     }).execute()
+    response = supabase_admin.table("votes").insert({
+        "token_hash": token_hash,
+        "candidate_id": candidate_id,
+        "vote_code": vote_code
+    }).execute()
+
+    log_action("VOTE_CAST", "success") 
 
     return response.data
 
@@ -94,27 +113,32 @@ def get_total_votes():
 
 def get_turnout():
     supabase_admin = get_supabase_admin()
-    TOTAL_VOTERS = 150
-
+    total_voters = supabase_admin.table("voters") \
+        .select("id", count="exact") \
+        .execute()
+    TOTAL_VOTERS = total_voters.count or 0
     total_votes = supabase_admin.table("votes") \
         .select("id", count="exact") \
         .execute()
-
     voted = total_votes.count or 0
+    if TOTAL_VOTERS == 0:
+        return 0.0
     return round((voted / TOTAL_VOTERS) * 100, 2)
 
 
 def get_turnout_detailed():
     supabase_admin = get_supabase_admin()
-    TOTAL_VOTERS = 150
-
+    total_voters = supabase_admin.table("voters") \
+        .select("id", count="exact") \
+        .execute()
+    TOTAL_VOTERS = total_voters.count or 0
     total_votes = supabase_admin.table("votes") \
         .select("id", count="exact") \
         .execute()
-
     voted = total_votes.count or 0
+    if TOTAL_VOTERS == 0:
+        return {"voted": 0, "total_voters": 0, "percentage": 0.0}
     percentage = round((voted / TOTAL_VOTERS) * 100, 2)
-
     return {
         "voted": voted,
         "total_voters": TOTAL_VOTERS,

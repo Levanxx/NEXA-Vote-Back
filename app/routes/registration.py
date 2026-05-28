@@ -1,4 +1,6 @@
 from flask import Blueprint, request, jsonify
+from app.middleware.auth_middleware import require_auth
+from app.extensions import limiter
 
 from app.services.registration_service import (
     create_voter,
@@ -17,6 +19,7 @@ registration_bp = Blueprint("registration", __name__)
 
 
 @registration_bp.route("/register/identity", methods=["POST"])
+@limiter.limit("5 per minute")
 def register_identity():
 
     data = request.get_json()
@@ -105,11 +108,12 @@ def update_identity(voter_id):
 
     try:
 
-        update_voter(voter_id, data)
+        voter_data, token = update_voter(voter_id, data)
 
         return jsonify({
             "success": True,
-            "message": "Actualizado correctamente"
+            "message": "Actualizado correctamente",
+            "token": token 
         }), 200
 
     except Exception as e:
@@ -123,6 +127,7 @@ def update_identity(voter_id):
 
 
 @registration_bp.route("/register/summary/<voter_id>", methods=["GET"])
+@require_auth
 def registration_summary(voter_id):
 
     try:
@@ -138,10 +143,11 @@ def registration_summary(voter_id):
         return jsonify({
             "success": True,
             "data": {
-                "voter": voter,
+                **(voter or {}),
                 "face_registered": face is not None,
                 "webauthn_registered": webauthn is not None,
-                "status": status
+                "registration_step": status.get("current_step") if status else None,
+                "registration_status": status.get("status") if status else None
             }
         }), 200
 
@@ -156,6 +162,7 @@ def registration_summary(voter_id):
 
 
 @registration_bp.route("/register/complete/<voter_id>", methods=["PUT"])
+@require_auth
 def complete_registration(voter_id):
 
     try:
@@ -177,6 +184,7 @@ def complete_registration(voter_id):
     
 
 @registration_bp.route("/register/identity/scan", methods=["POST"])
+@limiter.limit("5 per hour") 
 def register_identity_scan():
 
     data = request.get_json()
