@@ -1,4 +1,4 @@
-from app.utils.supabase_client import get_supabase_admin
+from app.utils.supabase_client import get_supabase_admin, get_supabase
 from app.services.audit_service import log_action
 import hashlib
 
@@ -17,7 +17,8 @@ def login_voter(dni, password):
     voter = voter_response.data
     email = voter["email"]
 
-    auth_response = supabase_admin.auth.sign_in_with_password({
+    supabase = get_supabase()
+    auth_response = supabase.auth.sign_in_with_password({
         "email": email,
         "password": password
     })
@@ -35,7 +36,7 @@ def login_voter(dni, password):
     }).execute()
 
     existing = supabase_admin.table("vote_tokens") \
-        .select("id") \
+        .select("voter_id") \
         .eq("voter_id", voter_id) \
         .execute()
 

@@ -3,6 +3,7 @@ from flask import Flask, jsonify, g
 from flask_cors import CORS
 from app.middleware.auth_middleware import require_auth
 from app.extensions import limiter
+from app.config import Config
 
 from app.routes.registration import registration_bp
 from app.routes.biometric import biometric_bp
@@ -17,6 +18,7 @@ from app.routes.admin import admin_bp
 
 def create_app():
     app = Flask(__name__)
+    
     limiter.init_app(app)
 
     allowed_origins = os.environ.get(
