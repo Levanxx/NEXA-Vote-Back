@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from app.middleware.auth_middleware import require_auth
 from app.extensions import limiter
 
@@ -131,7 +131,9 @@ def update_identity(voter_id):
 def registration_summary(voter_id):
 
     try:
-
+        if voter_id != g.voter_id:
+            return jsonify({"success": False, "error": "No autorizado"}), 403
+        
         voter = get_voter(voter_id)
 
         face = get_face(voter_id)
@@ -166,7 +168,8 @@ def registration_summary(voter_id):
 def complete_registration(voter_id):
 
     try:
-
+        if voter_id != g.voter_id:
+            return jsonify({"success": False, "error": "No autorizado"}), 403
         complete_registration_service(voter_id)
 
         return jsonify({

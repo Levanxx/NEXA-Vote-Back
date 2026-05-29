@@ -1,6 +1,7 @@
 from functools import wraps
 from flask import request, jsonify, g
 from app.utils.supabase_client import get_supabase_admin
+import hashlib
 
 
 def require_auth(f):
@@ -29,8 +30,10 @@ def require_auth(f):
         
         g.voter_id = voter.data["id"] if voter.data else None
         g.auth_user_id = user.user.id
+        g.session_token_hash = hashlib.sha256(token.encode()).hexdigest()
         
         return f(*args, **kwargs)
+
     return decorated
 
 

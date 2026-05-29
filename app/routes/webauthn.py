@@ -1,11 +1,14 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g 
 from app.services.webauthn_service import generate_challenge, save_webauthn, verify_webauthn_login
 from app.middleware.auth_middleware import require_auth
+from app.extensions import limiter
+
 
 webauthn_bp = Blueprint("webauthn", __name__)
 
 
 @webauthn_bp.route("/webauthn/register/options", methods=["POST"])
+@limiter.limit("30 per minute")
 @require_auth
 def options():
 
@@ -16,6 +19,7 @@ def options():
 
 
 @webauthn_bp.route("/webauthn/register/verify", methods=["POST"])
+@limiter.limit("30 per minute")
 @require_auth
 def verify():
 
@@ -27,7 +31,7 @@ def verify():
             "error": "Body requerido"
         }), 400
 
-    voter_id = data.get("voter_id")
+    voter_id = g.voter_id
     credential_id = data.get("id")  
 
     if not voter_id or not credential_id:
@@ -51,6 +55,7 @@ def verify():
         }), 500
     
 @webauthn_bp.route("/webauthn/auth/options", methods=["POST"])
+@limiter.limit("30 per minute")
 @require_auth 
 def auth_options():
 
@@ -61,6 +66,7 @@ def auth_options():
 
 
 @webauthn_bp.route("/webauthn/auth/verify", methods=["POST"])
+@limiter.limit("30 per minute")
 @require_auth
 def auth_verify():
 
@@ -71,12 +77,12 @@ def auth_verify():
             "error": "Body requerido"
         }), 400
 
-    voter_id = data.get("voter_id")
+    voter_id = g.voter_id
     credential_id = data.get("id")
 
     try:
 
-        verify_webauthn_login(voter_id, credential_id)
+        verify_webauthn_login(voter_id, credential_id, g.session_token_hash)
 
         return jsonify({
             "success": True,

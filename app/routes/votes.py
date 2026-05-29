@@ -1,11 +1,14 @@
-from flask import Blueprint, request, jsonify
-from app.services.vote_service import cast_vote, get_voter_from_token, get_results, get_total_votes, get_turnout, get_turnout_detailed
-from app.middleware.auth_middleware import require_admin
+from flask import Blueprint, request, jsonify, g
+from app.services.vote_service import cast_vote, get_results, get_total_votes, get_turnout, get_turnout_detailed
+from app.middleware.auth_middleware import require_admin, require_auth
+from app.extensions import limiter
 
 votes_bp = Blueprint("votes", __name__, url_prefix="/api/votes")
 
 
 @votes_bp.route("/cast", methods=["POST"])
+@limiter.limit("10 per minute")
+@require_auth
 def vote():
     data = request.get_json()
     candidate_id = data.get("candidate_id")
@@ -17,9 +20,8 @@ def vote():
         }), 400
 
     try:
-        voter_id = get_voter_from_token(request)
 
-        cast_vote(voter_id, candidate_id)
+        cast_vote(g.voter_id, candidate_id, g.session_token_hash) 
 
         return jsonify({
             "success": True,

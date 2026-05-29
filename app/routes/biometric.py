@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from app.services.biometric_service import save_face
 from app.middleware.auth_middleware import require_auth
 
@@ -14,7 +14,7 @@ def register_face():
     print("DATA RECIBIDA:", data)  
 
     try:
-        voter_id = data.get("voter_id")
+        voter_id = g.voter_id
         descriptor = data.get("descriptor")
 
         if not voter_id or not descriptor:

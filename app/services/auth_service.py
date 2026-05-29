@@ -1,6 +1,6 @@
 from app.utils.supabase_client import get_supabase_admin
 from app.services.audit_service import log_action
-
+import hashlib
 
 def login_voter(dni, password):
     supabase_admin = get_supabase_admin()
@@ -27,6 +27,12 @@ def login_voter(dni, password):
 
     session = auth_response.session
     voter_id = voter["id"]
+
+    session_token_hash = hashlib.sha256(session.access_token.encode()).hexdigest()
+    supabase_admin.table("mfa_sessions").insert({
+        "voter_id": voter_id,
+        "session_token_hash": session_token_hash
+    }).execute()
 
     existing = supabase_admin.table("vote_tokens") \
         .select("id") \

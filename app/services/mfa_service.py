@@ -2,6 +2,7 @@ import numpy as np
 import json
 from app.utils.supabase_client import get_supabase_admin
 from app.services.audit_service import log_action
+import hashlib
 
 def normalize_dni(dni):
     return str(dni).strip().replace(" ", "")
@@ -13,7 +14,9 @@ def validate_dni_mfa(token, dni_scanned):
     if not token:
         raise Exception("Token requerido")
 
-    user_response = supabase_admin.auth.get_user(token.replace("Bearer ", ""))
+    clean_token = token.replace("Bearer ", "")
+
+    user_response = supabase_admin.auth.get_user(clean_token)
 
     if not user_response.user:
         raise Exception("Usuario no válido")
@@ -34,12 +37,11 @@ def validate_dni_mfa(token, dni_scanned):
     if normalize_dni(voter["dni"]) != normalize_dni(dni_scanned):
         raise Exception("DNI no coincide con el usuario")
 
-    supabase_admin.table("registration_status") \
-        .update({
-            "current_step": 2,
-            "status": "dni_validated"
-        }) \
+    session_token_hash = hashlib.sha256(clean_token.encode()).hexdigest()
+    supabase_admin.table("mfa_sessions") \
+        .update({"dni_validated": True}) \
         .eq("voter_id", voter["id"]) \
+        .eq("session_token_hash", session_token_hash) \
         .execute()
 
     return {
@@ -48,13 +50,17 @@ def validate_dni_mfa(token, dni_scanned):
     }
 
 
+
+
 def validate_face_mfa(token, descriptor_nuevo):
     supabase_admin = get_supabase_admin()
 
     if not token:
         raise Exception("Token requerido")
 
-    user_response = supabase_admin.auth.get_user(token.replace("Bearer ", ""))
+    clean_token = token.replace("Bearer ", "")               
+
+    user_response = supabase_admin.auth.get_user(clean_token)
 
     if not user_response.user:
         raise Exception("Usuario no válido")
@@ -95,15 +101,14 @@ def validate_face_mfa(token, descriptor_nuevo):
     print(f"DISTANCIA FACIAL: {distancia}")
     UMBRAL = 0.50
     if distancia > UMBRAL:
-        log_action("FACE_VERIFIED", "failed", voter["id"], metadata={"distance": round(distancia, 4)})  # ← acá (línea 100)
+        log_action("FACE_VERIFIED", "failed", voter["id"], metadata={"distance": round(distancia, 4)})
         raise Exception(f"Rostro no coincide (distancia: {round(distancia, 4)})")
 
-    supabase_admin.table("registration_status") \
-        .update({
-            "current_step": 3,
-            "status": "face_validated"
-        }) \
+    session_token_hash = hashlib.sha256(clean_token.encode()).hexdigest()   
+    supabase_admin.table("mfa_sessions") \
+        .update({"face_validated": True}) \
         .eq("voter_id", voter["id"]) \
+        .eq("session_token_hash", session_token_hash) \
         .execute()
 
     return {

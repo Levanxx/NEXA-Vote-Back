@@ -31,39 +31,7 @@ def save_webauthn(voter_id, credential_id):
         raise
 
 
-def complete_mfa_webauthn(voter_id, credential_id):
-    supabase_admin = get_supabase_admin()
-
-    response = supabase_admin.table("webauthn_credentials") \
-        .select("*") \
-        .eq("voter_id", voter_id) \
-        .limit(1) \
-        .execute()
-
-    if not response.data:
-        raise Exception("No existe WebAuthn registrado")
-
-    saved = response.data[0]["credential_id"]
-
-    print("SAVED:", saved)
-    print("RECEIVED:", credential_id)
-
-    if saved != credential_id:
-        raise Exception("Credential inválida")
-
-    supabase_admin.table("registration_status") \
-        .update({
-            "current_step": 4,
-            "status": "completed",
-            "completed_at": "now()"
-        }) \
-        .eq("voter_id", voter_id) \
-        .execute()
-
-    return True
-
-
-def verify_webauthn_login(voter_id, credential_id):
+def verify_webauthn_login(voter_id, credential_id, session_token_hash):
     supabase_admin = get_supabase_admin()
     response = supabase_admin.table("webauthn_credentials") \
         .select("*") \
@@ -75,4 +43,12 @@ def verify_webauthn_login(voter_id, credential_id):
     saved = response.data[0]["credential_id"]
     if saved != credential_id:
         raise Exception("Credencial no coincide")
+
+    # Marcar MFA completo
+    supabase_admin.table("mfa_sessions") \
+        .update({"webauthn_validated": True}) \
+        .eq("voter_id", voter_id) \
+        .eq("session_token_hash", session_token_hash) \
+        .execute()
+
     return True

@@ -1,6 +1,7 @@
 import os
 from app.utils.supabase_client import get_supabase_admin
 from app.services.audit_service import log_action
+from app.config import Config
 import uuid
 import hashlib
 
@@ -32,8 +33,21 @@ def get_voter_from_token(request):
     return voter.data["id"]
 
 
-def cast_vote(voter_id, candidate_id):
+def cast_vote(voter_id, candidate_id, session_token_hash):
     supabase_admin = get_supabase_admin()
+
+    mfa = supabase_admin.table("mfa_sessions") \
+        .select("id") \
+        .eq("voter_id", voter_id) \
+        .eq("session_token_hash", session_token_hash) \
+        .eq("dni_validated", True) \
+        .eq("face_validated", True) \
+        .eq("webauthn_validated", True) \
+        .maybe_single() \
+        .execute()
+    if not mfa.data:
+        raise Exception("Debes completar la verificación de identidad antes de votar")
+
 
     candidate = supabase_admin.table("candidates") \
         .select("id") \
@@ -56,7 +70,10 @@ def cast_vote(voter_id, candidate_id):
 
     vote_code = str(uuid.uuid4())
     token = str(uuid.uuid4())
-    secret = os.environ["VOTE_SECRET_KEY"]
+    secret = Config.VOTE_SECRET_KEY
+    if not secret:
+        raise Exception("Error de configuración del sistema de votación")
+    
     token_hash = hashlib.sha256(f"{token}{secret}".encode()).hexdigest()
 
 

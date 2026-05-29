@@ -1,11 +1,13 @@
 from flask import Blueprint, request, jsonify
 from app.services.mfa_service import validate_dni_mfa
 from app.services.mfa_service import validate_face_mfa
+from app.extensions import limiter
 
 mfa_bp = Blueprint("mfa", __name__, url_prefix="/api/mfa")
 
 
 @mfa_bp.route("/validate-dni", methods=["POST"])
+@limiter.limit("30 per minute") 
 def validate_dni():
 
     data = request.get_json()
@@ -35,6 +37,7 @@ def validate_dni():
     
 
 @mfa_bp.route("/validate-face", methods=["POST"])
+@limiter.limit("30 per minute") 
 def validate_face():
 
     data  = request.get_json()
