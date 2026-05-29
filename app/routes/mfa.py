@@ -54,6 +54,12 @@ def validate_face():
     try:
         result = validate_face_mfa(token, descriptor_nuevo)
 
+        if isinstance(result, dict) and result.get("error") == "face_not_found":
+            return jsonify({
+                "success": False,
+                "error": "face_not_found"
+            }), 404
+
         return jsonify({
             "success": True,
             "data": result
