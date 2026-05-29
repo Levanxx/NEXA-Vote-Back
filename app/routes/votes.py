@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify, g
 from app.services.vote_service import cast_vote, get_results, get_total_votes, get_turnout, get_turnout_detailed
 from app.middleware.auth_middleware import require_admin, require_auth
 from app.extensions import limiter
+from flask import current_app as app
+from app.services.report_service import get_report, get_report_csv 
 
 votes_bp = Blueprint("votes", __name__, url_prefix="/api/votes")
 
@@ -13,11 +15,8 @@ def vote():
     data = request.get_json()
     candidate_id = data.get("candidate_id")
 
-    if not candidate_id:
-        return jsonify({
-            "success": False,
-            "error": "Datos incompletos"
-        }), 400
+    if candidate_id is None or (candidate_id.lower() != "blank" and not candidate_id):
+        return jsonify({"success": False, "error": "Datos incompletos"}), 400
 
     try:
 
@@ -68,3 +67,25 @@ def turnout_detailed():
         "success": True,
         **get_turnout_detailed()
     }), 200
+
+
+@votes_bp.route("/report", methods=["GET"])
+@require_admin
+def report():
+    try:
+        data = get_report()
+        return jsonify({"success": True, "data": data}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@votes_bp.route("/report/csv", methods=["GET"])
+@require_admin
+def report_csv():
+    try:
+        csv_content = get_report_csv()
+        response = app.make_response(csv_content)
+        response.headers["Content-Type"] = "text/csv; charset=utf-8"
+        response.headers["Content-Disposition"] = "attachment; filename=reporte_votacion.csv"
+        return response
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500

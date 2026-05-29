@@ -1,36 +1,7 @@
-import os
 from app.utils.supabase_client import get_supabase_admin
-from app.services.audit_service import log_action
 from app.config import Config
 import uuid
 import hashlib
-
-
-def get_voter_from_token(request):
-    supabase_admin = get_supabase_admin()
-
-    auth = request.headers.get("Authorization")
-    if not auth:
-        raise Exception("No token")
-
-    token = auth.replace("Bearer ", "")
-    user = supabase_admin.auth.get_user(token)
-
-    if not user or not user.user:
-        raise Exception("Token inválido")
-
-    auth_user_id = user.user.id
-
-    voter = supabase_admin.table("voters") \
-        .select("id") \
-        .eq("auth_user_id", auth_user_id) \
-        .maybe_single() \
-        .execute()
-
-    if not voter.data:
-        raise Exception("Votante no encontrado")
-
-    return voter.data["id"]
 
 
 def cast_vote(voter_id, candidate_id, session_token_hash):
@@ -49,14 +20,14 @@ def cast_vote(voter_id, candidate_id, session_token_hash):
         raise Exception("Debes completar la verificación de identidad antes de votar")
 
 
-    candidate = supabase_admin.table("candidates") \
-        .select("id") \
-        .eq("id", candidate_id) \
-        .maybe_single() \
-        .execute()
-    
-    if not candidate.data:
-        raise Exception("Candidato no encontrado")
+    if candidate_id.lower() != "blank":
+        candidate = supabase_admin.table("candidates") \
+            .select("id") \
+            .eq("id", candidate_id) \
+            .maybe_single() \
+            .execute()
+        if not candidate.data:
+            raise Exception("Candidato no encontrado")
     
 
     existing = supabase_admin.table("vote_tokens") \
@@ -64,7 +35,6 @@ def cast_vote(voter_id, candidate_id, session_token_hash):
         .eq("voter_id", voter_id) \
         .execute()
     if existing.data:
-        log_action("VOTE_FAILED", "failed", voter_id, metadata={"reason": "already_voted"})  # ← acá
         raise Exception("El votante ya emitió su voto")
     
 
@@ -74,20 +44,28 @@ def cast_vote(voter_id, candidate_id, session_token_hash):
     if not secret:
         raise Exception("Error de configuración del sistema de votación")
     
+    if candidate_id.lower() == "blank":
+        candidate_id = None
+
+
     token_hash = hashlib.sha256(f"{token}{secret}".encode()).hexdigest()
+    vote_hash = hashlib.sha256(f"{token}{candidate_id}{secret}".encode()).hexdigest()
 
 
     supabase_admin.table("vote_tokens").insert({
         "voter_id": voter_id,
         "token": token
     }).execute()
+
+
     response = supabase_admin.table("votes").insert({
         "token_hash": token_hash,
         "candidate_id": candidate_id,
-        "vote_code": vote_code
+        "vote_code": vote_code,
+        "vote_hash": vote_hash
     }).execute()
 
-    log_action("VOTE_CAST", "success") 
+
 
     return response.data
 

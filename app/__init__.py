@@ -13,6 +13,7 @@ from app.routes.mfa import mfa_bp
 from app.routes.candidates import candidates_bp
 from app.routes.votes import votes_bp
 from app.routes.admin import admin_bp
+from app.middleware.security_headers import security_headers
 
 
 
@@ -20,6 +21,8 @@ def create_app():
     app = Flask(__name__)
     
     limiter.init_app(app)
+
+    app.after_request(security_headers)
 
     allowed_origins = os.environ.get(
         "ALLOWED_ORIGINS",

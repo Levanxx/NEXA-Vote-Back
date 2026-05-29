@@ -1,29 +1,28 @@
-from app.utils.supabase_client import  get_supabase_admin
+from app.utils.supabase_client import get_supabase_admin, get_supabase 
 from app.services.audit_service import log_action
 
 def login_admin(email, password):
          
-    supabase_admin = get_supabase_admin()  
+    supabase = get_supabase()  
 
-    auth_response = supabase_admin.auth.sign_in_with_password({
+    auth_response = supabase.auth.sign_in_with_password({
         "email": email,
         "password": password
     })
 
-    if not auth_response.session:
-        log_action("ADMIN_LOGIN", "failed", metadata={"email": email})  # ← acá
+    if not auth_response or not auth_response.session:
         raise Exception("Credenciales inválidas")
+    
 
-    user = auth_response.user
+    supabase_admin = get_supabase_admin()
 
     admin_response = supabase_admin.table("admins") \
         .select("*") \
-        .eq("auth_user_id", user.id) \
+        .eq("auth_user_id", auth_response.user.id) \
         .maybe_single() \
         .execute()
 
     if not admin_response.data:
-        log_action("ADMIN_LOGIN", "failed", metadata={"email": email, "reason": "not_admin"})  # ← acá
         raise Exception("No es administrador")
 
 

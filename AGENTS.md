@@ -46,3 +46,131 @@ No existe test runner, linter, typechecker, CI, Makefile ni `pyproject.toml`.
 - No hay tests, linter, typechecker ni CI. Cualquier herramienta nueva debe crearse desde cero.
 - Uploads faciales van a `app/uploads/face/` (gitignorado excepto `.gitkeep`).
 - Factory pattern: `app.create_app()` en `run.py`.
+
+## Reportes electorales — Integración Frontend
+
+### Endpoints (requieren token admin en `Authorization: Bearer <token>`)
+
+| Método | Ruta | Formato | Descripción |
+|--------|------|---------|-------------|
+| GET | `/api/votes/report` | JSON | Datos completos para gráficos |
+| GET | `/api/votes/report/csv` | CSV | Descarga del reporte en tabla |
+
+### Estructura del JSON (`/api/votes/report`)
+
+```json
+{
+  "results": [
+    { "candidate_id": "uuid", "name": "Ana López", "party": "Partido Azul",
+      "photo_url": "...", "total": 3500, "percentage": 35.0 }
+  ],
+  "blank_votes": { "total": 150, "percentage": 1.5 },
+  "total_voters": 18000,
+  "total_votes": 12000,
+  "turnout_percentage": 66.67,
+  "turnout_by_age": {
+    "18-25": { "total": 5000, "voted": 3200, "percentage": 64.0 },
+    "26-40": { "total": 8000, "voted": 5600, "percentage": 70.0 },
+    "41-60": { "total": 4000, "voted": 3000, "percentage": 75.0 },
+    "60+":   { "total": 1000, "voted": 600,  "percentage": 60.0 }
+  }
+}
+```
+
+### Ejemplos de gráficos con Recharts
+
+#### 1. Barras — Resultados por candidato
+
+```jsx
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+
+function ResultadosChart({ data }) {
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={data.results}>
+        <XAxis dataKey="name" />
+        <YAxis />
+        <Tooltip formatter={(v) => `${v} votos`} />
+        <Bar dataKey="total" fill="#4f46e5" radius={[4,4,0,0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+```
+
+#### 2. Dona — Participación por edad
+
+```jsx
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+
+const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444"];
+
+function EdadChart({ data }) {
+  const pieData = Object.entries(data.turnout_by_age).map(([rango, v]) => ({
+    name: rango, value: v.percentage
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <PieChart>
+        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={100}>
+          {pieData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
+        </Pie>
+        <Tooltip formatter={(v) => `${v}%`} />
+        <Legend />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}
+```
+
+#### 3. Progreso circular — Participación total
+
+```jsx
+function TurnoutGauge({ percentage }) {
+  const r = 70;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference - (percentage / 100) * circumference;
+
+  return (
+    <svg width="160" height="160" viewBox="0 0 160 160">
+      <circle cx="80" cy="80" r={r} fill="none" stroke="#e5e7eb" strokeWidth="12" />
+      <circle cx="80" cy="80" r={r} fill="none" stroke="#4f46e5" strokeWidth="12"
+        strokeDasharray={circumference} strokeDashoffset={offset}
+        transform="rotate(-90 80 80)" strokeLinecap="round" />
+      <text x="80" y="80" textAnchor="middle" dominantBaseline="central" fontSize="24" fontWeight="bold">
+        {percentage}%
+      </text>
+    </svg>
+  );
+}
+```
+
+### Cómo cargar los datos
+
+```javascript
+import { useState, useEffect } from "react";
+
+function Dashboard() {
+  const [report, setReport] = useState(null);
+  const token = sessionStorage.getItem("admin_token");
+
+  useEffect(() => {
+    if (!token) return;
+    fetch("http://localhost:10000/api/votes/report", {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(r => r.success && setReport(r.data));
+  }, [token]);
+
+  if (!report) return <p>Cargando...</p>;
+  return (
+    <>
+      <ResultadosChart data={report} />
+      <EdadChart data={report} />
+      <TurnoutGauge percentage={report.turnout_percentage} />
+    </>
+  );
+}
+```
