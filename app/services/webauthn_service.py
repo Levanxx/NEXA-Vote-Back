@@ -4,6 +4,7 @@ import json
 from urllib.parse import urlparse
 from flask import session
 from app.utils.supabase_client import get_supabase_admin
+from app.utils.encryption import encrypt_text, decrypt_text
 from app.config import Config
 from fido2.server import Fido2Server
 from fido2.webauthn import (
@@ -75,7 +76,7 @@ def register_complete(voter_id, data, state):
 
     get_supabase_admin().table("webauthn_credentials").upsert({
         "voter_id": voter_id,
-        "credential_raw": credential_raw,
+        "credential_raw": encrypt_text(credential_raw),
         "credential_id": websafe_encode(cd.credential_id),
         "public_key": websafe_encode(cbor.encode(cd.public_key)),
         "sign_count": 0,
@@ -97,7 +98,7 @@ def auth_begin(voter_id):
 
     r = row.data[0]
     credential_data = AttestedCredentialData(
-        websafe_decode(r["credential_raw"])
+        websafe_decode(decrypt_text(r["credential_raw"]))
     )
 
     server = _get_server()
@@ -125,7 +126,7 @@ def auth_complete(voter_id, data, session_token_hash, state):
 
     r = row.data[0]
     credential_data = AttestedCredentialData(
-        websafe_decode(r["credential_raw"])
+        websafe_decode(decrypt_text(r["credential_raw"]))
     )
 
     server = _get_server()

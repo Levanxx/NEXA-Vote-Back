@@ -1,6 +1,7 @@
 import numpy as np
 import json
 from app.utils.supabase_client import get_supabase_admin
+from app.utils.encryption import decrypt_text
 from app.config import Config
 from supabase import create_client
 import hashlib
@@ -72,6 +73,7 @@ def validate_face_mfa(token, descriptor_nuevo):
 
     raw = bio_response.data[0]["face_embedding"]
     if isinstance(raw, str):
+        raw = decrypt_text(raw)
         raw = json.loads(raw)
 
     descriptor_guardado = np.array(raw, dtype=np.float64)
